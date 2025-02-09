@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Invoice</title>
+</head>
+<body>
+
+    <h1>Edit Invoice</h1>
+    <form method="POST">
+        <input type="text" name="customer_name" value="{{ invoice.customer_name }}" required>
+        <input type="text" name="customer_gstin" value="{{ invoice.customer_gstin }}" required>
+        <input type="number" name="amount" value="{{ invoice.amount }}" required>
+        <select name="status">
+            <option value="Pending" {% if invoice.status == 'Pending' %}selected{% endif %}>Pending</option>
+            <option value="Paid" {% if invoice.status == 'Paid' %}selected{% endif %}>Paid</option>
+            <option value="Overdue" {% if invoice.status == 'Overdue' %}selected{% endif %}>Overdue</option>
+        </select>
+        <button type="submit">Update</button>
+    </form>
+
+    <a href="{{ url_for('invoices') }}">Back to Invoices</a>
+
+</body>
+</html>
