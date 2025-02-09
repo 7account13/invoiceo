@@ -7,6 +7,8 @@
 <h2>Add Invoice</h2>
 <form action="/add_invoice" method="POST">
     <input type="text" name="customer_name" placeholder="Customer Name" required>
+    <input type="text" name="customer_address" placeholder="Customer Address" required>
+    <input type="text" name="billing_address" placeholder="Billing Address" required>
     <input type="text" name="customer_gstin" placeholder="Customer Gstin" required>
     <input type="number" name="amount" placeholder="Amount" required>
     <select name="status">
@@ -36,6 +38,8 @@
         <th>ID</th>
         <th>Customer Name</th>
         <th>Customer Gstin</th>
+        <th>Customer Address</th>
+        <th>Billing Address</th>
         <th>Amount</th>
         <th>Status</th>
         <th>Actions</th>
@@ -44,6 +48,8 @@
     <tr>
         <td>{{ invoice.id }}</td>
         <td>{{ invoice.customer_name }}</td>
+        <td>{{ invoice.customer_address }}</td>
+        <td>{{ invoice.billing_address }}</td>
         <td>{{ invoice.customer_gstin }}</td>
         <td>${{ invoice.amount }}</td>
         <td>{{ invoice.status }}</td>

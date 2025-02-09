@@ -74,6 +74,25 @@ def add_invoice():
     db.session.commit()
     return redirect(url_for('invoices'))
 
+# Edit Invoice
+@app.route('/edit_invoice/<int:id>', methods=['GET', 'POST'])
+def edit_invoice(id):
+    invoice = Invoice.query.get_or_404(id)
+    
+    if request.method == 'POST':
+        invoice.customer_name = request.form['customer_name']
+        invoice.customer_gstin = request.form['customer_gstin']
+        invoice.amount = float(request.form['amount'])
+        invoice.customer_address = request.form['customer_address']
+        invoice.billing_address = request.form['billing_address']
+        invoice.status = request.form['status']
+
+        db.session.commit()
+        return redirect(url_for('invoices'))
+
+    return render_template('edit_invoice.html', invoice=invoice)
+
+
 # Delete Invoice
 @app.route('/delete_invoice/<int:id>', methods=['POST'])
 def delete_invoice(id):
