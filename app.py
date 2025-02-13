@@ -32,6 +32,16 @@ class Customer(db.Model):
     billing_address = db.Column(db.String(300), nullable=False)
     receivables = db.Column(db.Float, nullable=False, default=0.0)
 
+class Prducts(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    product_name = db.Column(db.String(100), nullable=False)
+    product_description = db.Column(db.String(300), nullable=False)
+    product_price = db.Column(db.Float, nullable=False)
+    product_quantity = db.Column(db.Integer, nullable=False)
+    product_tax = db.Column(db.Float, nullable=False)
+    product_discount = db.Column(db.Float, nullable=False)
+    product_total = db.Column(db.Float, nullable=False)
+
 # Create database tables
 with app.app_context():
     db.create_all()
@@ -171,5 +181,10 @@ def delete_customer(id):
     db.session.commit()
     return redirect(url_for('customers'))
 
+
+@app.route('/products', methods=['GET'])
+def products():
+    return render_template('products.html')
+    
 if __name__ == '__main__':
     app.run(debug=True)
