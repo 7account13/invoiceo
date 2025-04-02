@@ -1,46 +1,54 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h1>Customers</h1>
+<link rel="stylesheet" href="{{ url_for('static', filename='customers.css') }}">
 
-<!-- Add Customer Form -->
-<h2>Add Customer</h2>
-<form action="/add_customer" method="POST">
-    <input type="text" name="customer_name" placeholder="Customer Name" required>
-    <input type="text" name="customer_gstin" placeholder="Customer Gstin" required>
-    <input type="text" name="customer_address" placeholder="Customer Address" required>
-    <input type="text" name="billing_address" placeholder="Billing Address" required>
-    <input type="number" name="receivables" placeholder="Receivables" required>
-    <button type="submit">Add Customer</button>
-</form>
+<div class="container">
+    <h1>Customers</h1>
+    
+    <!-- Add Customer Form -->
+    <div class="form-container">
+        <h2>Add Customer</h2>
+        <form action="/add_customer" method="POST">
+            <input type="text" name="customer_name" placeholder="Customer Name" required>
+            <input type="text" name="customer_gstin" placeholder="Customer Gstin" required>
+            <input type="text" name="customer_address" placeholder="Customer Address" required>
+            <input type="text" name="billing_address" placeholder="Billing Address" required>
+            <input type="number" name="receivables" placeholder="Receivables" required>
+            <button type="submit">Add Customer</button>
+        </form>
+    </div>
 
-<!-- Customer List -->
-<h2>Customer List</h2>
-<table border="1">
-    <tr>
-        <th>ID</th>
-        <th>Customer Name</th>
-        <th>Customer Gstin</th>
-        <th>Customer Address</th>
-        <th>Billing Address</th>
-        <th>Receivables</th>
-        <th>Actions</th>
-    </tr>
-    {% for customer in customers %}
-    <tr>
-        <td>{{ customer.id }}</td>
-        <td>{{ customer.customer_name }}</td>
-        <td>{{ customer.customer_gstin }}</td>
-        <td>{{ customer.customer_address }}</td>
-        <td>{{ customer.billing_address }}</td>
-        <td>${{ customer.receivables }}</td>
-        <td>
-            <a href="{{ url_for('edit_customer', id=customer.id) }}">Edit</a>
-            <form action="{{ url_for('delete_customer', id=customer.id) }}" method="POST" style="display:inline;">
-                <button type="submit" onclick="return confirm('Are you sure?')">Delete</button>
-            </form>
-        </td>
-    </tr>
-    {% endfor %}
-</table>
+    <!-- Customer List -->
+    <div class="table-container">
+        <h2>Customer List</h2>
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>Customer Name</th>
+                <th>Customer Gstin</th>
+                <th>Customer Address</th>
+                <th>Billing Address</th>
+                <th>Receivables</th>
+                <th>Actions</th>
+            </tr>
+            {% for customer in customers %}
+            <tr>
+                <td>{{ customer.id }}</td>
+                <td>{{ customer.customer_name }}</td>
+                <td>{{ customer.customer_gstin }}</td>
+                <td>{{ customer.customer_address }}</td>
+                <td>{{ customer.billing_address }}</td>
+                <td>${{ customer.receivables }}</td>
+                <td>
+                    <a class="edit-btn" href="{{ url_for('edit_customer', id=customer.id) }}">Edit</a>
+                    <form action="{{ url_for('delete_customer', id=customer.id) }}" method="POST" class="delete-form">
+                        <button type="submit" onclick="return confirm('Are you sure?')">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
 {% endblock %}
