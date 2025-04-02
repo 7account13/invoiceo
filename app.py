@@ -3,6 +3,8 @@ from flask_sqlalchemy import SQLAlchemy
 import os
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+from datetime import datetime
+
 
 app = Flask(__name__)
 
@@ -32,15 +34,23 @@ class Customer(db.Model):
     billing_address = db.Column(db.String(300), nullable=False)
     receivables = db.Column(db.Float, nullable=False, default=0.0)
 
-class Prducts(db.Model):
+class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    product_name = db.Column(db.String(100), nullable=False)
-    product_description = db.Column(db.String(300), nullable=False)
-    product_price = db.Column(db.Float, nullable=False)
-    product_quantity = db.Column(db.Integer, nullable=False)
-    product_tax = db.Column(db.Float, nullable=False)
-    product_discount = db.Column(db.Float, nullable=False)
-    product_total = db.Column(db.Float, nullable=False)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    description = db.Column(db.String(300))
+    products = db.relationship('Product', backref='category', lazy=True)
+
+class Product(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.String(300))
+    price = db.Column(db.Float, nullable=False)
+    quantity = db.Column(db.Integer, default=0)
+    tax_rate = db.Column(db.Float, default=0.0)  # in percentage
+    discount = db.Column(db.Float, default=0.0)   # in percentage
+    category_id = db.Column(db.Integer, db.ForeignKey('category.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 # Create database tables
 with app.app_context():
@@ -183,9 +193,97 @@ def delete_customer(id):
     return redirect(url_for('customers'))
 
 
-@app.route('/products', methods=['GET'])
+# Product Routes
+@app.route('/products')
 def products():
-    return render_template('products.html')
+    all_products = Product.query.all()
+    all_categories = Category.query.all()
+    return render_template('products.html', products=all_products, categories=all_categories)
+
+@app.route('/add_product', methods=['POST'])
+def add_product():
+    name = request.form['name']
+    description = request.form['description']
+    price = float(request.form['price'])
+    quantity = int(request.form['quantity'])
+    tax_rate = float(request.form.get('tax_rate', 0))
+    discount = float(request.form.get('discount', 0))
+    category_id = int(request.form['category_id'])
+
+    new_product = Product(
+        name=name,
+        description=description,
+        price=price,
+        quantity=quantity,
+        tax_rate=tax_rate,
+        discount=discount,
+        category_id=category_id
+    )
+    
+    db.session.add(new_product)
+    db.session.commit()
+    return redirect(url_for('products'))
+
+@app.route('/edit_product/<int:id>', methods=['GET', 'POST'])
+def edit_product(id):
+    product = Product.query.get_or_404(id)
+    categories = Category.query.all()
+    
+    if request.method == 'POST':
+        product.name = request.form['name']
+        product.description = request.form['description']
+        product.price = float(request.form['price'])
+        product.quantity = int(request.form['quantity'])
+        product.tax_rate = float(request.form.get('tax_rate', 0))
+        product.discount = float(request.form.get('discount', 0))
+        product.category_id = int(request.form['category_id'])
+
+        db.session.commit()
+        return redirect(url_for('products'))
+
+    return render_template('edit_product.html', product=product, categories=categories)
+
+@app.route('/delete_product/<int:id>', methods=['POST'])
+def delete_product(id):
+    product = Product.query.get_or_404(id)
+    db.session.delete(product)
+    db.session.commit()
+    return redirect(url_for('products'))
+
+# Category Routes
+@app.route('/categories')
+def categories():
+    all_categories = Category.query.all()
+    return render_template('categories.html', categories=all_categories)
+
+@app.route('/add_category', methods=['POST'])
+def add_category():
+    name = request.form['name']
+    description = request.form['description']
+
+    new_category = Category(name=name, description=description)
+    db.session.add(new_category)
+    db.session.commit()
+    return redirect(url_for('categories'))
+
+@app.route('/edit_category/<int:id>', methods=['GET', 'POST'])
+def edit_category(id):
+    category = Category.query.get_or_404(id)
+    
+    if request.method == 'POST':
+        category.name = request.form['name']
+        category.description = request.form['description']
+        db.session.commit()
+        return redirect(url_for('categories'))
+
+    return render_template('edit_category.html', category=category)
+
+@app.route('/delete_category/<int:id>', methods=['POST'])
+def delete_category(id):
+    category = Category.query.get_or_404(id)
+    db.session.delete(category)
+    db.session.commit()
+    return redirect(url_for('categories'))
     
 if __name__ == '__main__':
     app.run(debug=True)
