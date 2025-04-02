@@ -6,17 +6,57 @@
 
 <!-- Add Invoice Form -->
 <h2>Add Invoice</h2>
-<form action="/add_invoice" method="POST">
-    <input type="text" name="customer_name" placeholder="Customer Name" required>
-    <input type="text" name="customer_address" placeholder="Customer Address" required>
-    <input type="text" name="billing_address" placeholder="Billing Address" required>
-    <input type="text" name="customer_gstin" placeholder="Customer Gstin" required>
-    <input type="number" name="amount" placeholder="Amount" required>
-    <select name="status">
-        <option value="Pending">Pending</option>
-        <option value="Paid">Paid</option>
-        <option value="Overdue">Overdue</option>
-    </select>
+<form id="invoiceForm" action="/add_invoice" method="POST">
+    <div>
+        <label for="customer_id">Select Customer:</label>
+        <select name="customer_id" id="customer_id" required onchange="fillCustomerDetails()">
+            <option value="">-- Select Customer --</option>
+            {% for customer in customers %}
+            <option value="{{ customer.id }}" 
+                    data-name="{{ customer.customer_name }}"
+                    data-gstin="{{ customer.customer_gstin }}"
+                    data-address="{{ customer.customer_address }}"
+                    data-billing="{{ customer.billing_address }}">
+                {{ customer.customer_name }} ({{ customer.customer_gstin }})
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    
+    <div>
+        <label for="customer_name">Customer Name:</label>
+        <input type="text" name="customer_name" id="customer_name" placeholder="Customer Name" required readonly>
+    </div>
+    
+    <div>
+        <label for="customer_gstin">Customer GSTIN:</label>
+        <input type="text" name="customer_gstin" id="customer_gstin" placeholder="Customer GSTIN" required readonly>
+    </div>
+    
+    <div>
+        <label for="customer_address">Customer Address:</label>
+        <textarea name="customer_address" id="customer_address" placeholder="Customer Address" required readonly></textarea>
+    </div>
+    
+    <div>
+        <label for="billing_address">Billing Address:</label>
+        <textarea name="billing_address" id="billing_address" placeholder="Billing Address" required></textarea>
+    </div>
+    
+    <div>
+        <label for="amount">Amount:</label>
+        <input type="number" name="amount" id="amount" placeholder="Amount" step="0.01" required>
+    </div>
+    
+    <div>
+        <label for="status">Status:</label>
+        <select name="status" id="status" required>
+            <option value="Pending">Pending</option>
+            <option value="Paid">Paid</option>
+            <option value="Overdue">Overdue</option>
+        </select>
+    </div>
+    
     <button type="submit">Add Invoice</button>
 </form>
 
@@ -35,33 +75,93 @@
 <!-- Invoice List -->
 <h2>Invoice List</h2>
 <table border="1">
-    <tr>
-        <th>ID</th>
-        <th>Customer Name</th>
-        <th>Customer Gstin</th>
-        <th>Customer Address</th>
-        <th>Billing Address</th>
-        <th>Amount</th>
-        <th>Status</th>
-        <th>Actions</th>
-    </tr>
-    {% for invoice in invoices %}
-    <tr>
-        <td>{{ invoice.id }}</td>
-        <td>{{ invoice.customer_name }}</td>
-        <td>{{ invoice.customer_address }}</td>
-        <td>{{ invoice.billing_address }}</td>
-        <td>{{ invoice.customer_gstin }}</td>
-        <td>${{ invoice.amount }}</td>
-        <td>{{ invoice.status }}</td>
-        <td>
-            <a href="{{ url_for('edit_invoice', id=invoice.id) }}">Edit</a>
-            <form action="{{ url_for('delete_invoice', id=invoice.id) }}" method="POST" style="display:inline;">
-                <button type="submit" onclick="return confirm('Are you sure?')">Delete</button>
-            </form>
-            <a href="{{ url_for('generate_pdf', id=invoice.id) }}">Download PDF</a>
-        </td>
-    </tr>
-    {% endfor %}
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Customer Name</th>
+            <th>GSTIN</th>
+            <th>Customer Address</th>
+            <th>Billing Address</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for invoice in invoices %}
+        <tr>
+            <td>{{ invoice.id }}</td>
+            <td>{{ invoice.customer_name }}</td>
+            <td>{{ invoice.customer_gstin }}</td>
+            <td>{{ invoice.customer_address }}</td>
+            <td>{{ invoice.billing_address }}</td>
+            <td>${{ invoice.amount }}</td>
+            <td>{{ invoice.status }}</td>
+            <td>
+                <a href="{{ url_for('edit_invoice', id=invoice.id) }}">Edit</a>
+                <form action="{{ url_for('delete_invoice', id=invoice.id) }}" method="POST" style="display:inline;">
+                    <button type="submit" onclick="return confirm('Are you sure?')">Delete</button>
+                </form>
+                <a href="{{ url_for('generate_pdf', id=invoice.id) }}">PDF</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
 </table>
+
+<script>
+function fillCustomerDetails() {
+    const customerSelect = document.getElementById('customer_id');
+    const selectedOption = customerSelect.options[customerSelect.selectedIndex];
+    
+    if (selectedOption.value) {
+        document.getElementById('customer_name').value = selectedOption.getAttribute('data-name');
+        document.getElementById('customer_gstin').value = selectedOption.getAttribute('data-gstin');
+        document.getElementById('customer_address').value = selectedOption.getAttribute('data-address');
+        document.getElementById('billing_address').value = selectedOption.getAttribute('data-billing') || selectedOption.getAttribute('data-address');
+    } else {
+        // Clear fields if no customer selected
+        document.getElementById('customer_name').value = '';
+        document.getElementById('customer_gstin').value = '';
+        document.getElementById('customer_address').value = '';
+        document.getElementById('billing_address').value = '';
+    }
+}
+</script>
+
+<style>
+    form div {
+        margin-bottom: 10px;
+    }
+    label {
+        display: inline-block;
+        width: 150px;
+    }
+    input[type="text"], 
+    input[type="number"],
+    select,
+    textarea {
+        width: 300px;
+        padding: 5px;
+    }
+    textarea {
+        height: 60px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+    th, td {
+        padding: 8px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+    th {
+        background-color: #f2f2f2;
+    }
+    tr:hover {
+        background-color: #f5f5f5;
+    }
+</style>
 {% endblock %}

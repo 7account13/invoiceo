@@ -59,7 +59,8 @@ def invoices():
         all_invoices = Invoice.query.filter_by(status=status_filter).all()
     else:
         all_invoices = Invoice.query.all()
-    return render_template('invoices.html', invoices=all_invoices)
+    all_customers = Customer.query.all()  # Get all customers
+    return render_template('invoices.html', invoices=all_invoices, customers=all_customers)
 
 # Add Invoice
 @app.route('/add_invoice', methods=['POST'])
