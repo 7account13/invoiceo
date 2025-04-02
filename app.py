@@ -15,15 +15,29 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-# Invoice Model
+# Add these models to your existing ones
+
+class InvoiceItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey('invoice.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
+    product_name = db.Column(db.String(100), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+    unit_price = db.Column(db.Float, nullable=False)
+    tax_rate = db.Column(db.Float, default=0.0)
+    discount = db.Column(db.Float, default=0.0)
+    total = db.Column(db.Float, nullable=False)
+
+# Update your Invoice model to include items relationship
 class Invoice(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     customer_name = db.Column(db.String(100), nullable=False)
-    customer_gstin= db.Column(db.String(15),nullable=False)
+    customer_gstin = db.Column(db.String(15), nullable=False)
     amount = db.Column(db.Float, nullable=False)
     customer_address = db.Column(db.String(300), nullable=False)
     billing_address = db.Column(db.String(300), nullable=False)
     status = db.Column(db.String(20), default="Pending")
+    items = db.relationship('InvoiceItem', backref='invoice', cascade='all, delete-orphan')
 
 # Customer Model
 class Customer(db.Model):
@@ -73,28 +87,72 @@ def invoices():
     return render_template('invoices.html', invoices=all_invoices, customers=all_customers)
 
 # Add Invoice
+# Add these new routes for invoice management with products
+
 @app.route('/add_invoice', methods=['POST'])
 def add_invoice():
-    customer_name = request.form['customer_name']
-    customer_gstin = request.form['customer_gstin']
-    amount = float(request.form['amount'])
-    customer_address = request.form['customer_address']
-    billing_address = request.form['billing_address']
-    status = request.form['status']
+    customer_id = request.form.get('customer_id')
+    if customer_id:
+        customer = Customer.query.get(customer_id)
+        customer_name = customer.customer_name
+        customer_gstin = customer.customer_gstin
+        customer_address = customer.customer_address
+        billing_address = customer.billing_address
+    else:
+        customer_name = request.form['customer_name']
+        customer_gstin = request.form['customer_gstin']
+        customer_address = request.form['customer_address']
+        billing_address = request.form['billing_address']
 
+    status = request.form['status']
+    product_ids = request.form.getlist('product_id[]')
+    quantities = request.form.getlist('quantity[]')
+    
+    # Calculate invoice total
+    total_amount = 0
+    items = []
+    
+    for product_id, quantity in zip(product_ids, quantities):
+        product = Product.query.get(product_id)
+        if product:
+            item_total = float(product.product_price) * int(quantity)
+            total_amount += item_total
+            items.append({
+                'product': product,
+                'quantity': quantity,
+                'unit_price': product.product_price,
+                'total': item_total
+            })
+
+    # Create invoice
     new_invoice = Invoice(
-        customer_name=customer_name, 
+        customer_name=customer_name,
         customer_gstin=customer_gstin,
-        amount=amount, 
-        customer_address=customer_address, 
-        billing_address=billing_address, 
+        amount=total_amount,
+        customer_address=customer_address,
+        billing_address=billing_address,
         status=status
     )
     
     db.session.add(new_invoice)
+    db.session.flush()  # Get the invoice ID
+    
+    # Add invoice items
+    for item in items:
+        new_item = InvoiceItem(
+            invoice_id=new_invoice.id,
+            product_id=item['product'].id,
+            product_name=item['product'].product_name,
+            quantity=item['quantity'],
+            unit_price=item['unit_price'],
+            tax_rate=item['product'].product_tax,
+            discount=item['product'].product_discount,
+            total=item['total']
+        )
+        db.session.add(new_item)
+    
     db.session.commit()
     return redirect(url_for('invoices'))
-
 # Edit Invoice
 @app.route('/edit_invoice/<int:id>', methods=['GET', 'POST'])
 def edit_invoice(id):

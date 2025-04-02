@@ -6,137 +6,204 @@
 
 <!-- Add Invoice Form -->
 <h2>Add Invoice</h2>
-<form id="invoiceForm" action="/add_invoice" method="POST">
-    <div>
-        <label for="customer_id">Select Customer:</label>
-        <select name="customer_id" id="customer_id" required onchange="fillCustomerDetails()">
-            <option value="">-- Select Customer --</option>
-            {% for customer in customers %}
-            <option value="{{ customer.id }}" 
-                    data-name="{{ customer.customer_name }}"
-                    data-gstin="{{ customer.customer_gstin }}"
-                    data-address="{{ customer.customer_address }}"
-                    data-billing="{{ customer.billing_address }}">
-                {{ customer.customer_name }} ({{ customer.customer_gstin }})
-            </option>
-            {% endfor %}
-        </select>
+<form method="POST" action="/add_invoice">
+    <div class="form-section">
+        <h3>Customer Information</h3>
+        <div class="form-group">
+            <label for="customer_id">Select Customer:</label>
+            <select name="customer_id" id="customer_id" onchange="fillCustomerDetails()">
+                <option value="">-- New Customer --</option>
+                {% for customer in customers %}
+                <option value="{{ customer.id }}"
+                        data-name="{{ customer.customer_name }}"
+                        data-gstin="{{ customer.customer_gstin }}"
+                        data-address="{{ customer.customer_address }}"
+                        data-billing="{{ customer.billing_address }}">
+                    {{ customer.customer_name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="customer_name">Customer Name:</label>
+            <input type="text" name="customer_name" id="customer_name" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="customer_gstin">GSTIN:</label>
+            <input type="text" name="customer_gstin" id="customer_gstin" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="customer_address">Customer Address:</label>
+            <textarea name="customer_address" id="customer_address" required></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="billing_address">Billing Address:</label>
+            <textarea name="billing_address" id="billing_address" required></textarea>
+        </div>
     </div>
     
-    <div>
-        <label for="customer_name">Customer Name:</label>
-        <input type="text" name="customer_name" id="customer_name" placeholder="Customer Name" required readonly>
+    <div class="form-section">
+        <h3>Products</h3>
+        <div id="product_items">
+            <!-- Product rows will be added here -->
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="product_select">Add Product:</label>
+                <select id="product_select">
+                    <option value="">-- Select Product --</option>
+                    {% for product in products %}
+                    <option value="{{ product.id }}"
+                            data-name="{{ product.product_name }}"
+                            data-price="{{ product.product_price }}"
+                            data-tax="{{ product.product_tax }}"
+                            data-discount="{{ product.product_discount }}">
+                        {{ product.product_name }} (₹{{ "%.2f"|format(product.product_price) }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="product_quantity">Quantity:</label>
+                <input type="number" id="product_quantity" min="1" value="1">
+            </div>
+            
+            <button type="button" onclick="addProductRow()" class="btn-secondary">Add Product</button>
+        </div>
     </div>
     
-    <div>
-        <label for="customer_gstin">Customer GSTIN:</label>
-        <input type="text" name="customer_gstin" id="customer_gstin" placeholder="Customer GSTIN" required readonly>
-    </div>
-    
-    <div>
-        <label for="customer_address">Customer Address:</label>
-        <textarea name="customer_address" id="customer_address" placeholder="Customer Address" required readonly></textarea>
-    </div>
-    
-    <div>
-        <label for="billing_address">Billing Address:</label>
-        <textarea name="billing_address" id="billing_address" placeholder="Billing Address" required></textarea>
-    </div>
-    
-    <div>
-        <label for="amount">Amount:</label>
-        <input type="number" name="amount" id="amount" placeholder="Amount" step="0.01" required>
-    </div>
-    
-    <div>
+    <div class="form-group">
         <label for="status">Status:</label>
-        <select name="status" id="status" required>
+        <select name="status" required>
             <option value="Pending">Pending</option>
             <option value="Paid">Paid</option>
             <option value="Overdue">Overdue</option>
         </select>
     </div>
     
-    <button type="submit">Add Invoice</button>
+    <button type="submit">Create Invoice</button>
 </form>
 
-<!-- Filter Invoices -->
-<h2>Filter Invoices</h2>
-<form method="GET">
-    <select name="status">
-        <option value="">All</option>
-        <option value="Pending">Pending</option>
-        <option value="Paid">Paid</option>
-        <option value="Overdue">Overdue</option>
-    </select>
-    <button type="submit">Filter</button>
-</form>
-
-<!-- Invoice List -->
-<h2>Invoice List</h2>
-<table border="1">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Customer Name</th>
-            <th>GSTIN</th>
-            <th>Customer Address</th>
-            <th>Billing Address</th>
-            <th>Amount</th>
-            <th>Status</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for invoice in invoices %}
-        <tr>
-            <td>{{ invoice.id }}</td>
-            <td>{{ invoice.customer_name }}</td>
-            <td>{{ invoice.customer_gstin }}</td>
-            <td>{{ invoice.customer_address }}</td>
-            <td>{{ invoice.billing_address }}</td>
-            <td>${{ invoice.amount }}</td>
-            <td>{{ invoice.status }}</td>
-            <td>
-                <a href="{{ url_for('edit_invoice', id=invoice.id) }}">Edit</a>
-                <form action="{{ url_for('delete_invoice', id=invoice.id) }}" method="POST" style="display:inline;">
-                    <button type="submit" onclick="return confirm('Are you sure?')">Delete</button>
-                </form>
-                <a href="{{ url_for('generate_pdf', id=invoice.id) }}">PDF</a>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-
+<!-- JavaScript for dynamic form handling -->
 <script>
 function fillCustomerDetails() {
-    const customerSelect = document.getElementById('customer_id');
-    const selectedOption = customerSelect.options[customerSelect.selectedIndex];
+    const select = document.getElementById('customer_id');
+    const selectedOption = select.options[select.selectedIndex];
     
     if (selectedOption.value) {
-        document.getElementById('customer_name').value = selectedOption.getAttribute('data-name');
-        document.getElementById('customer_gstin').value = selectedOption.getAttribute('data-gstin');
-        document.getElementById('customer_address').value = selectedOption.getAttribute('data-address');
-        document.getElementById('billing_address').value = selectedOption.getAttribute('data-billing') || selectedOption.getAttribute('data-address');
-    } else {
-        // Clear fields if no customer selected
-        document.getElementById('customer_name').value = '';
-        document.getElementById('customer_gstin').value = '';
-        document.getElementById('customer_address').value = '';
-        document.getElementById('billing_address').value = '';
+        document.getElementById('customer_name').value = selectedOption.dataset.name;
+        document.getElementById('customer_gstin').value = selectedOption.dataset.gstin;
+        document.getElementById('customer_address').value = selectedOption.dataset.address;
+        document.getElementById('billing_address').value = selectedOption.dataset.billing || selectedOption.dataset.address;
     }
+}
+
+function addProductRow() {
+    const productSelect = document.getElementById('product_select');
+    const selectedOption = productSelect.options[productSelect.selectedIndex];
+    const quantity = document.getElementById('product_quantity').value;
+    
+    if (!selectedOption.value) return;
+    
+    const productId = selectedOption.value;
+    const productName = selectedOption.dataset.name;
+    const unitPrice = selectedOption.dataset.price;
+    const total = (unitPrice * quantity).toFixed(2);
+    
+    const productRow = `
+        <div class="product-row">
+            <input type="hidden" name="product_id[]" value="${productId}">
+            <span>${productName}</span>
+            <span>₹${unitPrice}</span>
+            <input type="number" name="quantity[]" value="${quantity}" min="1" readonly>
+            <span>₹${total}</span>
+            <button type="button" onclick="removeProductRow(this)">Remove</button>
+        </div>
+    `;
+    
+    document.getElementById('product_items').insertAdjacentHTML('beforeend', productRow);
+    
+    // Reset selection
+    productSelect.selectedIndex = 0;
+    document.getElementById('product_quantity').value = 1;
+}
+
+function removeProductRow(button) {
+    button.parentElement.remove();
 }
 </script>
 
 <style>
+    .form-section {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+
+    .form-row {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    .form-row .form-group {
+        flex: 1;
+    }
+
+    #product_items {
+        margin-bottom: 20px;
+    }
+
+    .product-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 4px;
+        margin-bottom: 8px;
+    }
+
+    .product-row span {
+        flex: 1;
+    }
+
+    .product-row button {
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+        align-self: flex-end;
+    }
+
     form div {
         margin-bottom: 10px;
     }
+    
     label {
         display: inline-block;
         width: 150px;
     }
+    
     input[type="text"], 
     input[type="number"],
     select,
@@ -144,22 +211,27 @@ function fillCustomerDetails() {
         width: 300px;
         padding: 5px;
     }
+    
     textarea {
         height: 60px;
     }
+    
     table {
         width: 100%;
         border-collapse: collapse;
         margin-top: 20px;
     }
+    
     th, td {
         padding: 8px;
         text-align: left;
         border-bottom: 1px solid #ddd;
     }
+    
     th {
         background-color: #f2f2f2;
     }
+    
     tr:hover {
         background-color: #f5f5f5;
     }
