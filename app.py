@@ -84,7 +84,7 @@ def invoices():
     else:
         all_invoices = Invoice.query.all()
     all_customers = Customer.query.all()  # Get all customers
-    return render_template('invoices.html', invoices=all_invoices, customers=all_customers)
+    return render_template('invoices.html', invoices=all_invoices, customers=all_customers,)
 
 # Add Invoice
 # Add these new routes for invoice management with products
