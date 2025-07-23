@@ -1,6 +1,40 @@
 {% extends 'base.html' %}
 
 {% block content %}
+
+<hr>
+<h2>All Invoices</h2>
+
+{% if invoices %}
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Customer</th>
+            <th>Status</th>
+            <th>Created</th>
+            <!-- Add more columns as needed -->
+        </tr>
+    </thead>
+    <tbody>
+       
+
+
+    {% for invoice in invoices %}
+   <tr>
+     <td>{{ invoice.id }}</td>
+     <td>{{ invoice.customer_name }}</td>
+     <td>{{ invoice.amount }}</td>
+     <td>{{ invoice.status }}</td>
+   </tr>
+{% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No invoices found.</p>
+{% endif %}
+
+
 <h1>Invoices</h1>
 <link rel="stylesheet" href="{{ url_for('static', filename='invoice.css') }}">
 
