@@ -59,12 +59,12 @@
                     <option value="">-- Select Product --</option>
                     {% for product in products %}
                     <option value="{{ product.id }}"
-                            data-name="{{ product.product_name }}"
-                            data-price="{{ product.product_price }}"
-                            data-tax="{{ product.product_tax }}"
-                            data-discount="{{ product.product_discount }}">
-                        {{ product.product_name }} (₹{{ "%.2f"|format(product.product_price) }})
-                    </option>
+        data-name="{{ product.name }}"
+        data-price="{{ product.price }}"
+        data-tax="{{ product.tax_rate }}"
+        data-discount="{{ product.discount }}">
+    {{ product.name }} (₹{{ "%.2f"|format(product.price) }})
+</option>
                     {% endfor %}
                 </select>
             </div>

@@ -84,7 +84,8 @@ def invoices():
     else:
         all_invoices = Invoice.query.all()
     all_customers = Customer.query.all()  # Get all customers
-    return render_template('invoices.html', invoices=all_invoices, customers=all_customers,)
+    all_products = Product.query.all()
+    return render_template('invoices.html', invoices=all_invoices, customers=all_customers ,products=all_products)
 
 # Add Invoice
 # Add these new routes for invoice management with products
@@ -97,7 +98,7 @@ def add_invoice():
         customer_name = customer.customer_name
         customer_gstin = customer.customer_gstin
         customer_address = customer.customer_address
-        billing_address = customer.billing_address
+        billing_address = customer.billing_address 
     else:
         customer_name = request.form['customer_name']
         customer_gstin = request.form['customer_gstin']
