@@ -15,9 +15,13 @@ The project is designed to be simple, readable, and easy to extend.
 git clone <repo-url>
 
 cd invoiceo
+
 python3 -m venv venv
+
 source venv/bin/activate
+
 pip install -r requirements.txt
+
 python3 app.py
 
 
