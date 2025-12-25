@@ -13,6 +13,7 @@ The project is designed to be simple, readable, and easy to extend.
 🚀 How to Run
 
 git clone <repo-url>
+
 cd invoiceo
 python3 -m venv venv
 source venv/bin/activate
