@@ -1,3 +1,5 @@
-Flask==2.0.1
+Flask==2.2.5
 Flask-SQLAlchemy==2.5.1
-reportlab
+SQLAlchemy<2.0
+Werkzeug==2.2.3
+reportlab==4.0.4
