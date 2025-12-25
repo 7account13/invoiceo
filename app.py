@@ -124,6 +124,8 @@ class Payment(db.Model):
     payment_date = db.Column(db.DateTime, default=datetime.utcnow)
     mode = db.Column(db.String(50))       # Cash / UPI / Bank
     reference = db.Column(db.String(100)) # optional
+    payment_date = db.Column(db.DateTime, nullable=False)   # 🔥 IMPORTANT
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 # ---------------- SALES ORDER MODELS ----------------
 
@@ -489,6 +491,13 @@ def add_payment(invoice_id):
         amount = float(request.form['amount'])
         mode = request.form.get('mode')
         reference = request.form.get('reference')
+        payment_date_str = request.form.get("payment_date")
+
+        if not payment_date_str:
+           abort(400, "Payment date is required")
+
+        payment_date = datetime.strptime(payment_date_str, "%Y-%m-%d")
+
 
         if amount <= 0:
             return redirect(url_for('invoices'))
@@ -502,7 +511,9 @@ def add_payment(invoice_id):
             customer_id=customer.id,
             amount=amount,
             mode=mode,
-            reference=reference
+            reference=reference,
+            payment_date=payment_date   # 🔥 USE USER DATE
+
         )
 
         db.session.add(payment)
@@ -520,6 +531,7 @@ def add_payment(invoice_id):
 
         db.session.commit()
         return redirect(url_for('invoices'))
+    
 
     return render_template('add_payment.html', invoice=invoice)
 
