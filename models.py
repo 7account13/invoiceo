@@ -64,3 +64,41 @@ class Payment(db.Model):
     mode = db.Column(db.String(50))
     reference = db.Column(db.String(100))
 
+class SalesOrder(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    so_number = db.Column(db.String(20), unique=True, nullable=False)
+    customer_po_number = db.Column(db.String(50), nullable=False)
+
+    customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=False)
+    order_date = db.Column(db.DateTime, default=datetime.utcnow)
+
+    status = db.Column(db.String(20), default="Open")  
+    # Open / Partially Invoiced / Completed
+
+    customer = db.relationship('Customer', backref='sales_orders')
+    items = db.relationship(
+        'SalesOrderItem',
+        backref='sales_order',
+        cascade='all, delete-orphan'
+    )
+
+    
+class SalesOrderItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    sales_order_id = db.Column(
+        db.Integer,
+        db.ForeignKey('sales_order.id'),
+        nullable=False
+    )
+
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
+    product_name = db.Column(db.String(100), nullable=False)
+
+    ordered_qty = db.Column(db.Integer, nullable=False)
+    invoiced_qty = db.Column(db.Integer, default=0)
+
+    unit_price = db.Column(db.Float, nullable=False)
+
+    product = db.relationship('Product')

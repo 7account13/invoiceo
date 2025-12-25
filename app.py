@@ -122,6 +122,47 @@ class Payment(db.Model):
     mode = db.Column(db.String(50))       # Cash / UPI / Bank
     reference = db.Column(db.String(100)) # optional
 
+# ---------------- SALES ORDER MODELS ----------------
+
+class SalesOrder(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    so_number = db.Column(db.String(20), unique=True, nullable=False)
+    customer_po_number = db.Column(db.String(50), nullable=False)
+
+    customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=False)
+    order_date = db.Column(db.DateTime, default=datetime.utcnow)
+
+    status = db.Column(db.String(30), default="Open")
+    # Open / Partially Invoiced / Completed
+
+    customer = db.relationship('Customer', backref='sales_orders')
+    items = db.relationship(
+        'SalesOrderItem',
+        backref='sales_order',
+        cascade='all, delete-orphan'
+    )
+
+
+class SalesOrderItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    sales_order_id = db.Column(
+        db.Integer,
+        db.ForeignKey('sales_order.id'),
+        nullable=False
+    )
+
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
+    product_name = db.Column(db.String(100), nullable=False)
+
+    ordered_qty = db.Column(db.Integer, nullable=False)
+    invoiced_qty = db.Column(db.Integer, default=0)
+
+    unit_price = db.Column(db.Float, nullable=False)
+
+    product = db.relationship('Product')
+
 
 # ---------------- DB INIT ----------------
 with app.app_context():
@@ -133,6 +174,11 @@ def generate_payment_no():
     last = Payment.query.order_by(Payment.id.desc()).first()
     next_id = (last.id + 1) if last else 1
     return f"PAY-{next_id:05d}"
+
+def generate_so_number():
+    last = SalesOrder.query.order_by(SalesOrder.id.desc()).first()
+    next_id = (last.id + 1) if last else 1
+    return f"SO-{next_id:05d}"
 
 
 
@@ -250,6 +296,50 @@ def edit_invoice(id):
         return redirect(url_for('invoices'))
 
     return render_template('edit_invoice.html', invoice=invoice)
+
+@app.route('/sales_orders')
+def sales_orders():
+    orders = SalesOrder.query.order_by(SalesOrder.order_date.desc()).all()
+    customers = Customer.query.all()
+    products = Product.query.all()
+    return render_template(
+        'sales_orders.html',
+        orders=orders,
+        customers=customers,
+        products=products
+    )
+
+@app.route('/add_sales_order', methods=['POST'])
+def add_sales_order():
+    customer_id = request.form['customer_id']
+    po_number = request.form['customer_po_number']
+
+    product_ids = request.form.getlist('product_id[]')
+    quantities = request.form.getlist('quantity[]')
+    prices = request.form.getlist('price[]')
+
+    so = SalesOrder(
+        so_number=generate_so_number(),
+        customer_po_number=po_number,
+        customer_id=customer_id
+    )
+
+    db.session.add(so)
+    db.session.flush()
+
+    for pid, qty, price in zip(product_ids, quantities, prices):
+        product = Product.query.get(pid)
+        item = SalesOrderItem(
+            sales_order_id=so.id,
+            product_id=pid,
+            product_name=product.name,
+            ordered_qty=int(qty),
+            unit_price=float(price)
+        )
+        db.session.add(item)
+
+    db.session.commit()
+    return redirect(url_for('sales_orders'))
 
 
 @app.route('/payments')
