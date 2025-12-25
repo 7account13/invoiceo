@@ -201,6 +201,44 @@ def add_invoice():
 
     return redirect(url_for('invoices'))
 
+@app.route('/edit_invoice/<int:id>', methods=['GET', 'POST'])
+def edit_invoice(id):
+    invoice = Invoice.query.get_or_404(id)
+    customer = Customer.query.filter_by(customer_name=invoice.customer_name).first()
+
+    old_amount = invoice.amount
+    old_status = invoice.status
+
+    if request.method == 'POST':
+        new_amount = float(request.form['amount'])
+        new_status = request.form['status']
+
+        invoice.customer_name = request.form['customer_name']
+        invoice.customer_gstin = request.form['customer_gstin']
+        invoice.customer_address = request.form['customer_address']
+        invoice.billing_address = request.form['billing_address']
+        invoice.amount = new_amount
+        invoice.status = new_status
+
+        # ---- RECEIVABLES LOGIC ----
+        if customer:
+            # Case 1: Pending/Overdue → Pending/Overdue
+            if old_status != "Paid" and new_status != "Paid":
+                customer.receivables += (new_amount - old_amount)
+
+            # Case 2: Pending → Paid
+            elif old_status != "Paid" and new_status == "Paid":
+                customer.receivables -= old_amount
+
+            # Case 3: Paid → Pending
+            elif old_status == "Paid" and new_status != "Paid":
+                customer.receivables += new_amount
+
+        db.session.commit()
+        return redirect(url_for('invoices'))
+
+    return render_template('edit_invoice.html', invoice=invoice)
+
 
 
 
