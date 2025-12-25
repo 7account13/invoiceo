@@ -50,7 +50,17 @@ class Invoice(db.Model):
     customer_address = db.Column(db.String(300), nullable=False)
     billing_address = db.Column(db.String(300), nullable=False)
     status = db.Column(db.String(20), default="Pending")
+
     items = db.relationship('InvoiceItem', backref='invoice', cascade='all, delete-orphan')
+    payments = db.relationship('Payment', backref='invoice', cascade='all, delete-orphan')
+
+    @property
+    def total_paid(self):
+        return sum(p.amount for p in self.payments)
+
+    @property
+    def balance(self):
+        return round(self.amount - self.total_paid, 2)
 
 
 class InvoiceItem(db.Model):
@@ -99,9 +109,32 @@ class Product(db.Model):
     category_id = db.Column(db.Integer, db.ForeignKey('category.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class Payment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    payment_no = db.Column(db.String(20), unique=True, nullable=False)
+
+    invoice_id = db.Column(db.Integer, db.ForeignKey('invoice.id'), nullable=False)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=False)
+
+    amount = db.Column(db.Float, nullable=False)
+    payment_date = db.Column(db.DateTime, default=datetime.utcnow)
+    mode = db.Column(db.String(50))       # Cash / UPI / Bank
+    reference = db.Column(db.String(100)) # optional
+
+
 # ---------------- DB INIT ----------------
 with app.app_context():
     db.create_all()
+
+#-----------------Helpers-------------------
+
+def generate_payment_no():
+    last = Payment.query.order_by(Payment.id.desc()).first()
+    next_id = (last.id + 1) if last else 1
+    return f"PAY-{next_id:05d}"
+
+
 
 # ---------------- ROUTES ----------------
 @app.route('/')
@@ -204,35 +237,14 @@ def add_invoice():
 @app.route('/edit_invoice/<int:id>', methods=['GET', 'POST'])
 def edit_invoice(id):
     invoice = Invoice.query.get_or_404(id)
-    customer = Customer.query.filter_by(customer_name=invoice.customer_name).first()
-
-    old_amount = invoice.amount
-    old_status = invoice.status
 
     if request.method == 'POST':
-        new_amount = float(request.form['amount'])
-        new_status = request.form['status']
-
         invoice.customer_name = request.form['customer_name']
         invoice.customer_gstin = request.form['customer_gstin']
         invoice.customer_address = request.form['customer_address']
         invoice.billing_address = request.form['billing_address']
-        invoice.amount = new_amount
-        invoice.status = new_status
-
-        # ---- RECEIVABLES LOGIC ----
-        if customer:
-            # Case 1: Pending/Overdue → Pending/Overdue
-            if old_status != "Paid" and new_status != "Paid":
-                customer.receivables += (new_amount - old_amount)
-
-            # Case 2: Pending → Paid
-            elif old_status != "Paid" and new_status == "Paid":
-                customer.receivables -= old_amount
-
-            # Case 3: Paid → Pending
-            elif old_status == "Paid" and new_status != "Paid":
-                customer.receivables += new_amount
+        invoice.amount = float(request.form['amount'])
+        invoice.status = request.form['status']
 
         db.session.commit()
         return redirect(url_for('invoices'))
@@ -240,6 +252,92 @@ def edit_invoice(id):
     return render_template('edit_invoice.html', invoice=invoice)
 
 
+@app.route('/payments')
+def payments():
+    all_payments = Payment.query.order_by(Payment.payment_date.desc()).all()
+    return render_template('payments.html', payments=all_payments)
+
+
+@app.route('/add_payment/<int:invoice_id>', methods=['GET', 'POST'])
+def add_payment(invoice_id):
+    invoice = Invoice.query.get_or_404(invoice_id)
+    customer = Customer.query.filter_by(customer_name=invoice.customer_name).first()
+
+    if request.method == 'POST':
+        amount = float(request.form['amount'])
+        mode = request.form.get('mode')
+        reference = request.form.get('reference')
+
+        if amount <= 0:
+            return redirect(url_for('invoices'))
+
+        if amount > invoice.balance:
+            amount = invoice.balance
+
+        payment = Payment(
+            payment_no=generate_payment_no(),
+            invoice_id=invoice.id,
+            customer_id=customer.id,
+            amount=amount,
+            mode=mode,
+            reference=reference
+        )
+
+        db.session.add(payment)
+
+        # update receivables
+        customer.receivables -= amount
+        if customer.receivables < 0:
+            customer.receivables = 0
+
+        # update invoice status
+        if invoice.balance - amount == 0:
+            invoice.status = "Paid"
+        else:
+            invoice.status = "Partially Paid"
+
+        db.session.commit()
+        return redirect(url_for('invoices'))
+
+    return render_template('add_payment.html', invoice=invoice)
+
+@app.route('/edit_payment/<int:id>', methods=['GET', 'POST'])
+def edit_payment(id):
+    payment = Payment.query.get_or_404(id)
+    invoice = payment.invoice
+    customer = Customer.query.get(payment.customer_id)
+
+    old_amount = payment.amount
+
+    if request.method == 'POST':
+        new_amount = float(request.form['amount'])
+        mode = request.form.get('mode')
+        reference = request.form.get('reference')
+
+        # prevent overpayment
+        max_allowed = invoice.balance + old_amount
+        if new_amount > max_allowed:
+            new_amount = max_allowed
+
+        payment.amount = new_amount
+        payment.mode = mode
+        payment.reference = reference
+
+        # ---- FIX RECEIVABLES ----
+        customer.receivables += (old_amount - new_amount)
+        if customer.receivables < 0:
+            customer.receivables = 0
+
+        # ---- UPDATE INVOICE STATUS ----
+        if invoice.balance == 0:
+            invoice.status = "Paid"
+        else:
+            invoice.status = "Partially Paid"
+
+        db.session.commit()
+        return redirect(url_for('payments'))
+
+    return render_template('edit_payment.html', payment=payment)
 
 
 # View All Customers

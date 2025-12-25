@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h2>Payments Received</h2>
+
+{% if payments %}
+<table>
+    <thead>
+        <tr>
+            <th>Payment No</th>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Invoice ID</th>
+            <th>Amount</th>
+            <th>Mode</th>
+            <th>Reference</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for p in payments %}
+        <tr>
+            <td>{{ p.payment_no }}</td>
+            <td>{{ p.payment_date.strftime('%d-%m-%Y') }}</td>
+            <td>
+                {{ p.invoice.customer_name }}
+            </td>
+            <td>
+                <a href="{{ url_for('edit_invoice', id=p.invoice_id) }}">
+                    INV-{{ p.invoice_id }}
+                </a>
+            </td>
+            <td>₹{{ p.amount }}</td>
+            <td>{{ p.mode }}</td>
+            <td>{{ p.reference or '-' }}</td>
+            <td>
+                <a href="{{ url_for('edit_payment', id=p.id) }}">
+                    Edit
+                </a>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No payments received yet.</p>
+{% endif %}
+
+{% endblock %}
