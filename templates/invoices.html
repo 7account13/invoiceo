@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
-
 {% block content %}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='invoice.css') }}">
 
 <hr>
 <h2>All Invoices</h2>
@@ -18,57 +19,61 @@
     </thead>
     <tbody>
     {% for invoice in invoices %}
-    <tr>
-        <td>{{ invoice.id }}</td>
-        <td>{{ invoice.customer_name }}</td>
-        <td>₹{{ invoice.amount }}</td>
-        <td>{{ invoice.status }}</td>
-        <td>
-            <a href="{{ url_for('edit_invoice', id=invoice.id) }}" class="btn-edit">
-                Edit
-            </a>
-            {% if invoice.balance > 0 %}
-        |       <a href="{{ url_for('add_payment', invoice_id=invoice.id) }}">
-            Add Payment
-          </a>
-    {% endif %}
-        </td>
-    </tr>
-{% endfor %}
-
+        <tr>
+            <td>{{ invoice.id }}</td>
+            <td>{{ invoice.customer_name }}</td>
+            <td>₹{{ invoice.amount }}</td>
+            <td>{{ invoice.status }}</td>
+            <td>
+                <a href="{{ url_for('edit_invoice', id=invoice.id) }}">Edit</a>
+                {% if invoice.balance > 0 %}
+                    | <a href="{{ url_for('add_payment', invoice_id=invoice.id) }}">Add Payment</a>
+                {% endif %}
+            </td>
+        </tr>
+    {% endfor %}
     </tbody>
 </table>
 {% else %}
 <p>No invoices found.</p>
 {% endif %}
 
-<link rel="stylesheet" href="{{ url_for('static', filename='invoice.css') }}">
-
 <hr>
 <h2>Add Invoice</h2>
 
-<form method="POST" action="/add_invoice">
+<form method="POST" action="{{ url_for('add_invoice') }}">
 
 <input type="hidden" id="seller_gstin" value="33ABCDE1234F1Z5">
 
+<!-- ================= SALES ORDER ================= -->
 <div class="form-section">
-    <h3>Customer Information</h3>
+    <h3>Sales Order (Optional)</h3>
 
     <div class="form-group">
-        <label>Select Customer:</label>
-        <select name="customer_id" id="customer_id" onchange="fillCustomerDetails()">
-            <option value="">-- New Customer --</option>
-            {% for customer in customers %}
-            <option value="{{ customer.id }}"
-                data-name="{{ customer.customer_name }}"
-                data-gstin="{{ customer.customer_gstin }}"
-                data-address="{{ customer.customer_address }}"
-                data-billing="{{ customer.billing_address }}">
-                {{ customer.customer_name }}
-            </option>
+        <label>Select Sales Order:</label>
+        <select name="sales_order_id" id="sales_order_id" onchange="fillFromSO()">
+            <option value="">-- No Sales Order --</option>
+            {% for so in sales_orders %}
+                {% if so.status != 'Completed' %}
+                <option value="{{ so.id }}"
+                        data-customer="{{ so.customer.customer_name }}"
+                        data-gstin="{{ so.customer.customer_gstin }}"
+                        data-address="{{ so.customer.customer_address }}"
+                        data-billing="{{ so.customer.billing_address }}"
+                        data-po="{{ so.customer_po_number }}">
+                    {{ so.so_number }} ({{ so.customer.customer_name }})
+                </option>
+                {% endif %}
             {% endfor %}
         </select>
     </div>
+</div>
+
+<!-- ================= CUSTOMER ================= -->
+<div class="form-section">
+    <h3>Customer Information</h3>
+
+    <input type="hidden" name="customer_po_number" id="customer_po_number">
 
     <div class="form-group">
         <label>Customer Name:</label>
@@ -91,36 +96,31 @@
     </div>
 </div>
 
+<!-- ================= PRODUCTS ================= -->
 <div class="form-section">
     <h3>Products</h3>
 
     <div id="product_items"></div>
 
     <div class="form-row">
-        <div class="form-group">
-            <label>Add Product:</label>
-            <select id="product_select">
-                <option value="">-- Select Product --</option>
-                {% for product in products %}
-                <option value="{{ product.id }}"
-                        data-name="{{ product.name }}"
-                        data-price="{{ product.price }}"
-                        data-tax="{{ product.tax_rate }}">
-                    {{ product.name }} (₹{{ "%.2f"|format(product.price) }})
-                </option>
-                {% endfor %}
-            </select>
-        </div>
+        <select id="product_select">
+            <option value="">-- Select Product --</option>
+            {% for product in products %}
+            <option value="{{ product.id }}"
+                    data-name="{{ product.name }}"
+                    data-price="{{ product.price }}"
+                    data-tax="{{ product.tax_rate }}">
+                {{ product.name }} (₹{{ "%.2f"|format(product.price) }})
+            </option>
+            {% endfor %}
+        </select>
 
-        <div class="form-group">
-            <label>Quantity:</label>
-            <input type="number" id="product_quantity" min="1" value="1">
-        </div>
-
-        <button type="button" onclick="addProductRow()" class="btn-secondary">Add Product</button>
+        <input type="number" id="product_quantity" min="1" value="1">
+        <button type="button" onclick="addProductRow()">Add Product</button>
     </div>
 </div>
 
+<!-- ================= GST PREVIEW ================= -->
 <h3>GST Breakup (Preview)</h3>
 <table id="gst_table">
     <thead>
@@ -137,11 +137,11 @@
     <tbody></tbody>
 </table>
 
-<h3>Total Invoice Amount: ₹<span id="invoice_total">0.00</span></h3>
+<h3>Total: ₹<span id="invoice_total">0.00</span></h3>
 
 <div class="form-group">
     <label>Status:</label>
-    <select name="status" required>
+    <select name="status">
         <option value="Pending">Pending</option>
         <option value="Paid">Paid</option>
         <option value="Overdue">Overdue</option>
@@ -149,18 +149,19 @@
 </div>
 
 <button type="submit">Create Invoice</button>
-
 </form>
 
+<!-- ================= JS ================= -->
 <script>
-function fillCustomerDetails() {
-    const s = document.getElementById("customer_id").selectedOptions[0];
-    if (!s.value) return;
+function fillFromSO() {
+    const so = document.getElementById("sales_order_id").selectedOptions[0];
+    if (!so.value) return;
 
-    customer_name.value = s.dataset.name;
-    customer_gstin.value = s.dataset.gstin;
-    customer_address.value = s.dataset.address;
-    billing_address.value = s.dataset.billing || s.dataset.address;
+    customer_name.value = so.dataset.customer;
+    customer_gstin.value = so.dataset.gstin;
+    customer_address.value = so.dataset.address;
+    billing_address.value = so.dataset.billing;
+    customer_po_number.value = so.dataset.po;
 
     recalcGSTPreview();
 }
@@ -183,15 +184,10 @@ function addProductRow() {
             <span>₹${price}</span>
             <input type="number" name="quantity[]" value="${qty}" readonly>
             <span>₹${(price * qty).toFixed(2)}</span>
-            <button type="button" onclick="removeProductRow(this)">Remove</button>
+            <button type="button" onclick="this.parentElement.remove(); recalcGSTPreview()">Remove</button>
         </div>
     `);
 
-    recalcGSTPreview();
-}
-
-function removeProductRow(btn) {
-    btn.parentElement.remove();
     recalcGSTPreview();
 }
 

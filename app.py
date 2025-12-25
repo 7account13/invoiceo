@@ -50,6 +50,7 @@ class Invoice(db.Model):
     customer_address = db.Column(db.String(300), nullable=False)
     billing_address = db.Column(db.String(300), nullable=False)
     status = db.Column(db.String(20), default="Pending")
+    
 
     items = db.relationship('InvoiceItem', backref='invoice', cascade='all, delete-orphan')
     payments = db.relationship('Payment', backref='invoice', cascade='all, delete-orphan')
@@ -194,12 +195,16 @@ def invoices():
         'invoices.html',
         invoices=Invoice.query.all(),
         customers=Customer.query.all(),
-        products=Product.query.all()
+        products=Product.query.all(),
+        sales_orders=SalesOrder.query.all()
     )
-
 
 @app.route('/add_invoice', methods=['POST'])
 def add_invoice():
+    print("ENTERED add_invoice")
+    print("FORM DATA:", request.form.to_dict())
+
+    # ---------------- CUSTOMER ----------------
     customer_id = request.form.get('customer_id')
 
     if customer_id:
@@ -209,33 +214,38 @@ def add_invoice():
         customer_address = customer.customer_address
         billing_address = customer.billing_address
     else:
+        customer = None
         customer_name = request.form['customer_name']
         customer_gstin = request.form['customer_gstin']
         customer_address = request.form['customer_address']
         billing_address = request.form['billing_address']
+
     status = request.form['status']
 
-    seller_gstin = "33ABCDE1234F1Z5"  # CHANGE LATER
+    # ---------------- GST ----------------
+    seller_gstin = "33ABCDE1234F1Z5"
     seller_state = get_state_code(seller_gstin)
     buyer_state = get_state_code(customer_gstin)
 
+    # ---------------- CREATE INVOICE ----------------
     new_invoice = Invoice(
         customer_name=customer_name,
         customer_gstin=customer_gstin,
-        amount=0,
         customer_address=customer_address,
         billing_address=billing_address,
-        status=request.form['status']
+        amount=0,
+        status=status
     )
 
     db.session.add(new_invoice)
-    db.session.flush()
+    db.session.flush()  # get invoice.id
 
     total_amount = 0
 
     product_ids = request.form.getlist('product_id[]')
     quantities = request.form.getlist('quantity[]')
 
+    # ---------------- ADD INVOICE ITEMS (IMPORTANT FIX) ----------------
     for pid, qty in zip(product_ids, quantities):
         product = Product.query.get(pid)
         if not product:
@@ -251,8 +261,7 @@ def add_invoice():
 
         total_amount += gst["total"]
 
-        db.session.add(InvoiceItem(
-            invoice_id=new_invoice.id,
+        item = InvoiceItem(
             product_id=product.id,
             product_name=product.name,
             quantity=int(qty),
@@ -263,20 +272,52 @@ def add_invoice():
             sgst=gst["sgst"],
             igst=gst["igst"],
             total=gst["total"]
-        ))
+        )
 
-    new_invoice.amount = total_amount# ---- UPDATE CUSTOMER RECEIVABLES ----
-    if customer_id:
-       if status != "Paid":
-           customer.receivables += total_amount
+        # 🔥 THIS IS THE CRITICAL LINE
+        new_invoice.items.append(item)
 
+    new_invoice.amount = total_amount
 
-    
+    # ---------------- UPDATE CUSTOMER RECEIVABLES ----------------
+    if customer and status != "Paid":
+        customer.receivables += total_amount
+    print("INVOICE ITEMS COUNT:", len(new_invoice.items))
+
+    # ---------------- SALES ORDER QTY REDUCTION ----------------
+    sales_order_id = request.form.get('sales_order_id')
+
+    if sales_order_id:
+        so = SalesOrder.query.get_or_404(sales_order_id)
+
+        for inv_item in new_invoice.items:
+            so_item = SalesOrderItem.query.filter_by(
+                sales_order_id=so.id,
+                product_id=inv_item.product_id
+            ).first()
+
+            if not so_item:
+                print("SO ERROR: product not in sales order")
+                return redirect(url_for('invoices'))
+
+            remaining = so_item.ordered_qty - so_item.invoiced_qty
+
+            if inv_item.quantity > remaining:
+                print("SO ERROR: qty exceeds remaining")
+                return redirect(url_for('invoices'))
+
+            # 🔥 ACTUAL REDUCTION
+            so_item.invoiced_qty += inv_item.quantity
+
+        # update SO status
+        if all(i.invoiced_qty >= i.ordered_qty for i in so.items):
+            so.status = "Completed"
+        else:
+            so.status = "Partially Invoiced"
+
+    # ---------------- COMMIT ----------------
     db.session.commit()
-    print("GST DEBUG")
-    for item in new_invoice.items:
-        print(item.product_name, item.cgst, item.sgst, item.igst)
-
+    print("INVOICE COMMITTED SUCCESSFULLY")
 
     return redirect(url_for('invoices'))
 
