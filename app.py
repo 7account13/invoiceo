@@ -1,4 +1,4 @@
-from flask import Flask,  render_template, request, redirect, url_for, send_file
+from flask import Flask,  render_template, request, redirect, url_for, send_file, abort
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import extract, func
 
@@ -284,6 +284,15 @@ def add_invoice():
     print("ENTERED add_invoice")
     print("FORM DATA:", request.form.to_dict())
 
+    invoice_date_str = request.form.get("invoice_date")
+
+    if not invoice_date_str:
+        abort(400, "Invoice date is required")
+
+    invoice_date = datetime.strptime(invoice_date_str, "%Y-%m-%d")
+
+
+
     # ---------------- CUSTOMER ----------------
     customer_id = request.form.get('customer_id')
 
@@ -314,8 +323,10 @@ def add_invoice():
         customer_address=customer_address,
         billing_address=billing_address,
         amount=0,
-        status=status
+        status=status,
+        created_at=invoice_date
     )
+    print("INVOICE DATE FROM FORM:", invoice_date)
 
     db.session.add(new_invoice)
     db.session.flush()  # get invoice.id

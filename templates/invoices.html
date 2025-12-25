@@ -42,6 +42,10 @@
 <h2>Add Invoice</h2>
 
 <form method="POST" action="{{ url_for('add_invoice') }}">
+<div class="form-group">
+    <label>Invoice Date:</label>
+    <input type="date" name="invoice_date" required>
+</div>
 
 <input type="hidden" id="seller_gstin" value="33ABCDE1234F1Z5">
 
