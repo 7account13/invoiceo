@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2 style="margin-bottom: 10px;">
+    Business Overview – {{ year }}
+</h2>
+
+<p style="color: #666; margin-bottom: 20px;">
+    Monthly trend of sales, payments, receivables, orders and expenses
+</p>
+
+<div style="
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+">
+    <canvas id="trendChart" height="120"></canvas>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+const ctx = document.getElementById('trendChart').getContext('2d');
+
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: {{ months | tojson }},
+        datasets: [
+            {
+                label: 'Sales',
+                data: {{ sales | tojson }},
+                borderColor: '#007bff',
+                backgroundColor: 'transparent',
+                tension: 0.3,
+                borderWidth: 2
+            },
+            {
+                label: 'Payments Received',
+                data: {{ payments | tojson }},
+                borderColor: '#28a745',
+                backgroundColor: 'transparent',
+                tension: 0.3,
+                borderWidth: 2
+            },
+            {
+                label: 'Receivables',
+                data: {{ receivables | tojson }},
+                borderColor: '#dc3545',
+                backgroundColor: 'transparent',
+                borderDash: [6, 4],
+                tension: 0.3,
+                borderWidth: 2
+            },
+            {
+                label: 'Sales Orders',
+                data: {{ orders | tojson }},
+                borderColor: '#6f42c1',
+                backgroundColor: 'transparent',
+                tension: 0.3,
+                borderWidth: 2
+            },
+            {
+                label: 'Expenses',
+                data: {{ expenses | tojson }},
+                borderColor: '#6c757d',
+                backgroundColor: 'transparent',
+                borderDash: [3, 3],
+                tension: 0.3,
+                borderWidth: 2
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    boxWidth: 12,
+                    padding: 15
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(ctx) {
+                        return ctx.dataset.label + ': ₹' + ctx.raw.toLocaleString();
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return '₹' + value.toLocaleString();
+                    }
+                },
+                grid: {
+                    color: '#eee'
+                }
+            },
+            x: {
+                grid: {
+                    display: false
+                }
+            }
+        }
+    }
+});
+</script>
+
+{% endblock %}

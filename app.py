@@ -1,5 +1,7 @@
-from flask import Flask, render_template, request, redirect, url_for, send_file
+from flask import Flask,  render_template, request, redirect, url_for, send_file
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import extract, func
+
 import os
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
@@ -50,7 +52,7 @@ class Invoice(db.Model):
     customer_address = db.Column(db.String(300), nullable=False)
     billing_address = db.Column(db.String(300), nullable=False)
     status = db.Column(db.String(20), default="Pending")
-    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     items = db.relationship('InvoiceItem', backref='invoice', cascade='all, delete-orphan')
     payments = db.relationship('Payment', backref='invoice', cascade='all, delete-orphan')
@@ -130,9 +132,10 @@ class SalesOrder(db.Model):
 
     so_number = db.Column(db.String(20), unique=True, nullable=False)
     customer_po_number = db.Column(db.String(50), nullable=False)
-
+    total_value = db.Column(db.Float, default=0.0)
     customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=False)
     order_date = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     status = db.Column(db.String(30), default="Open")
     # Open / Partially Invoiced / Completed
@@ -185,8 +188,85 @@ def generate_so_number():
 
 # ---------------- ROUTES ----------------
 @app.route('/')
-def home():
-    return render_template('home.html')
+@app.route('/dashboard')
+def dashboard():
+    current_year = datetime.now().year
+
+    months = ["Jan","Feb","Mar","Apr","May","Jun",
+              "Jul","Aug","Sep","Oct","Nov","Dec"]
+
+    def empty_series():
+        return [0] * 12
+
+    sales = empty_series()
+    payments = empty_series()
+    receivables = empty_series()
+    orders = empty_series()
+    expenses = empty_series()  # placeholder
+
+    # ---------------- SALES (INVOICES) ----------------
+    sales_q = db.session.query(
+        extract('month', Invoice.created_at),
+        func.sum(Invoice.amount)
+    ).filter(
+        extract('year', Invoice.created_at) == current_year
+    ).group_by(
+        extract('month', Invoice.created_at)
+    ).all()
+
+    for month, total in sales_q:
+        sales[int(month) - 1] = float(total or 0)
+
+    # ---------------- PAYMENTS ----------------
+    payments_q = db.session.query(
+        extract('month', Payment.payment_date),
+        func.sum(Payment.amount)
+    ).filter(
+        extract('year', Payment.payment_date) == current_year
+    ).group_by(
+        extract('month', Payment.payment_date)
+    ).all()
+
+    for month, total in payments_q:
+        payments[int(month) - 1] = float(total or 0)
+
+    # ---------------- RECEIVABLES ----------------
+    receivables_q = db.session.query(
+        extract('month', Invoice.created_at),
+        func.sum(Invoice.amount)
+    ).filter(
+        Invoice.status != 'Paid',
+        extract('year', Invoice.created_at) == current_year
+    ).group_by(
+        extract('month', Invoice.created_at)
+    ).all()
+
+    for month, total in receivables_q:
+        receivables[int(month) - 1] = float(total or 0)
+
+    # ---------------- SALES ORDERS ----------------
+    orders_q = db.session.query(
+        extract('month', SalesOrder.created_at),
+        func.sum(SalesOrder.total_value)
+    ).filter(
+        extract('year', SalesOrder.created_at) == current_year
+    ).group_by(
+        extract('month', SalesOrder.created_at)
+    ).all()
+
+    for month, total in orders_q:
+        orders[int(month) - 1] = float(total or 0)
+
+    return render_template(
+        "dashboard.html",
+        months=months,
+        sales=sales,
+        payments=payments,
+        receivables=receivables,
+        orders=orders,
+        expenses=expenses,
+        year=current_year
+    )
 
 
 @app.route('/invoices')
