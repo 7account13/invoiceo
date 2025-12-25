@@ -134,6 +134,7 @@ def add_invoice():
         customer_gstin = request.form['customer_gstin']
         customer_address = request.form['customer_address']
         billing_address = request.form['billing_address']
+    status = request.form['status']
 
     seller_gstin = "33ABCDE1234F1Z5"  # CHANGE LATER
     seller_state = get_state_code(seller_gstin)
@@ -185,7 +186,13 @@ def add_invoice():
             total=gst["total"]
         ))
 
-    new_invoice.amount = total_amount
+    new_invoice.amount = total_amount# ---- UPDATE CUSTOMER RECEIVABLES ----
+    if customer_id:
+       if status != "Paid":
+           customer.receivables += total_amount
+
+
+    
     db.session.commit()
     print("GST DEBUG")
     for item in new_invoice.items:
@@ -193,6 +200,7 @@ def add_invoice():
 
 
     return redirect(url_for('invoices'))
+
 
 
 

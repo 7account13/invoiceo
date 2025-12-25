@@ -11,263 +11,223 @@
         <tr>
             <th>ID</th>
             <th>Customer</th>
+            <th>Amount</th>
             <th>Status</th>
-            <th>Created</th>
-            <!-- Add more columns as needed -->
         </tr>
     </thead>
     <tbody>
-       
-
-
     {% for invoice in invoices %}
-   <tr>
-     <td>{{ invoice.id }}</td>
-     <td>{{ invoice.customer_name }}</td>
-     <td>{{ invoice.amount }}</td>
-     <td>{{ invoice.status }}</td>
-   </tr>
-{% endfor %}
+        <tr>
+            <td>{{ invoice.id }}</td>
+            <td>{{ invoice.customer_name }}</td>
+            <td>₹{{ invoice.amount }}</td>
+            <td>{{ invoice.status }}</td>
+        </tr>
+    {% endfor %}
     </tbody>
 </table>
 {% else %}
 <p>No invoices found.</p>
 {% endif %}
 
-
-<h1>Invoices</h1>
 <link rel="stylesheet" href="{{ url_for('static', filename='invoice.css') }}">
 
-<!-- Add Invoice Form -->
+<hr>
 <h2>Add Invoice</h2>
+
 <form method="POST" action="/add_invoice">
-    <div class="form-section">
-        <h3>Customer Information</h3>
+
+<input type="hidden" id="seller_gstin" value="33ABCDE1234F1Z5">
+
+<div class="form-section">
+    <h3>Customer Information</h3>
+
+    <div class="form-group">
+        <label>Select Customer:</label>
+        <select name="customer_id" id="customer_id" onchange="fillCustomerDetails()">
+            <option value="">-- New Customer --</option>
+            {% for customer in customers %}
+            <option value="{{ customer.id }}"
+                data-name="{{ customer.customer_name }}"
+                data-gstin="{{ customer.customer_gstin }}"
+                data-address="{{ customer.customer_address }}"
+                data-billing="{{ customer.billing_address }}">
+                {{ customer.customer_name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>Customer Name:</label>
+        <input type="text" name="customer_name" id="customer_name" required>
+    </div>
+
+    <div class="form-group">
+        <label>GSTIN:</label>
+        <input type="text" name="customer_gstin" id="customer_gstin" required>
+    </div>
+
+    <div class="form-group">
+        <label>Customer Address:</label>
+        <textarea name="customer_address" id="customer_address" required></textarea>
+    </div>
+
+    <div class="form-group">
+        <label>Billing Address:</label>
+        <textarea name="billing_address" id="billing_address" required></textarea>
+    </div>
+</div>
+
+<div class="form-section">
+    <h3>Products</h3>
+
+    <div id="product_items"></div>
+
+    <div class="form-row">
         <div class="form-group">
-            <label for="customer_id">Select Customer:</label>
-            <select name="customer_id" id="customer_id" onchange="fillCustomerDetails()">
-                <option value="">-- New Customer --</option>
-                {% for customer in customers %}
-                <option value="{{ customer.id }}"
-                        data-name="{{ customer.customer_name }}"
-                        data-gstin="{{ customer.customer_gstin }}"
-                        data-address="{{ customer.customer_address }}"
-                        data-billing="{{ customer.billing_address }}">
-                    {{ customer.customer_name }}
+            <label>Add Product:</label>
+            <select id="product_select">
+                <option value="">-- Select Product --</option>
+                {% for product in products %}
+                <option value="{{ product.id }}"
+                        data-name="{{ product.name }}"
+                        data-price="{{ product.price }}"
+                        data-tax="{{ product.tax_rate }}">
+                    {{ product.name }} (₹{{ "%.2f"|format(product.price) }})
                 </option>
                 {% endfor %}
             </select>
         </div>
-        
+
         <div class="form-group">
-            <label for="customer_name">Customer Name:</label>
-            <input type="text" name="customer_name" id="customer_name" required>
+            <label>Quantity:</label>
+            <input type="number" id="product_quantity" min="1" value="1">
         </div>
-        
-        <div class="form-group">
-            <label for="customer_gstin">GSTIN:</label>
-            <input type="text" name="customer_gstin" id="customer_gstin" required>
-        </div>
-        
-        <div class="form-group">
-            <label for="customer_address">Customer Address:</label>
-            <textarea name="customer_address" id="customer_address" required></textarea>
-        </div>
-        
-        <div class="form-group">
-            <label for="billing_address">Billing Address:</label>
-            <textarea name="billing_address" id="billing_address" required></textarea>
-        </div>
+
+        <button type="button" onclick="addProductRow()" class="btn-secondary">Add Product</button>
     </div>
-    
-    <div class="form-section">
-        <h3>Products</h3>
-        <div id="product_items">
-            <!-- Product rows will be added here -->
-        </div>
-        
-        <div class="form-row">
-            <div class="form-group">
-                <label for="product_select">Add Product:</label>
-                <select id="product_select">
-                    <option value="">-- Select Product --</option>
-                    {% for product in products %}
-                    <option value="{{ product.id }}"
-        data-name="{{ product.name }}"
-        data-price="{{ product.price }}"
-        data-tax="{{ product.tax_rate }}"
-        data-discount="{{ product.discount }}">
-    {{ product.name }} (₹{{ "%.2f"|format(product.price) }})
-</option>
-                    {% endfor %}
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="product_quantity">Quantity:</label>
-                <input type="number" id="product_quantity" min="1" value="1">
-            </div>
-            
-            <button type="button" onclick="addProductRow()" class="btn-secondary">Add Product</button>
-        </div>
-    </div>
-    
-    <div class="form-group">
-        <label for="status">Status:</label>
-        <select name="status" required>
-            <option value="Pending">Pending</option>
-            <option value="Paid">Paid</option>
-            <option value="Overdue">Overdue</option>
-        </select>
-    </div>
-    
-    <button type="submit">Create Invoice</button>
+</div>
+
+<h3>GST Breakup (Preview)</h3>
+<table id="gst_table">
+    <thead>
+        <tr>
+            <th>Product</th>
+            <th>Qty</th>
+            <th>Taxable</th>
+            <th>CGST</th>
+            <th>SGST</th>
+            <th>IGST</th>
+            <th>Total</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<h3>Total Invoice Amount: ₹<span id="invoice_total">0.00</span></h3>
+
+<div class="form-group">
+    <label>Status:</label>
+    <select name="status" required>
+        <option value="Pending">Pending</option>
+        <option value="Paid">Paid</option>
+        <option value="Overdue">Overdue</option>
+    </select>
+</div>
+
+<button type="submit">Create Invoice</button>
+
 </form>
 
-<!-- JavaScript for dynamic form handling -->
 <script>
 function fillCustomerDetails() {
-    const select = document.getElementById('customer_id');
-    const selectedOption = select.options[select.selectedIndex];
-    
-    if (selectedOption.value) {
-        document.getElementById('customer_name').value = selectedOption.dataset.name;
-        document.getElementById('customer_gstin').value = selectedOption.dataset.gstin;
-        document.getElementById('customer_address').value = selectedOption.dataset.address;
-        document.getElementById('billing_address').value = selectedOption.dataset.billing || selectedOption.dataset.address;
-    }
+    const s = document.getElementById("customer_id").selectedOptions[0];
+    if (!s.value) return;
+
+    customer_name.value = s.dataset.name;
+    customer_gstin.value = s.dataset.gstin;
+    customer_address.value = s.dataset.address;
+    billing_address.value = s.dataset.billing || s.dataset.address;
+
+    recalcGSTPreview();
+}
+
+function getStateCode(gstin) {
+    return gstin ? gstin.substring(0,2) : null;
 }
 
 function addProductRow() {
-    const productSelect = document.getElementById('product_select');
-    const selectedOption = productSelect.options[productSelect.selectedIndex];
-    const quantity = document.getElementById('product_quantity').value;
-    
-    if (!selectedOption.value) return;
-    
-    const productId = selectedOption.value;
-    const productName = selectedOption.dataset.name;
-    const unitPrice = selectedOption.dataset.price;
-    const total = (unitPrice * quantity).toFixed(2);
-    
-    const productRow = `
+    const opt = product_select.selectedOptions[0];
+    if (!opt.value) return;
+
+    const qty = parseInt(product_quantity.value);
+    const price = parseFloat(opt.dataset.price);
+
+    product_items.insertAdjacentHTML("beforeend", `
         <div class="product-row">
-            <input type="hidden" name="product_id[]" value="${productId}">
-            <span>${productName}</span>
-            <span>₹${unitPrice}</span>
-            <input type="number" name="quantity[]" value="${quantity}" min="1" readonly>
-            <span>₹${total}</span>
+            <input type="hidden" name="product_id[]" value="${opt.value}">
+            <span>${opt.dataset.name}</span>
+            <span>₹${price}</span>
+            <input type="number" name="quantity[]" value="${qty}" readonly>
+            <span>₹${(price * qty).toFixed(2)}</span>
             <button type="button" onclick="removeProductRow(this)">Remove</button>
         </div>
-    `;
-    
-    document.getElementById('product_items').insertAdjacentHTML('beforeend', productRow);
-    
-    // Reset selection
-    productSelect.selectedIndex = 0;
-    document.getElementById('product_quantity').value = 1;
+    `);
+
+    recalcGSTPreview();
 }
 
-function removeProductRow(button) {
-    button.parentElement.remove();
+function removeProductRow(btn) {
+    btn.parentElement.remove();
+    recalcGSTPreview();
 }
+
+function recalcGSTPreview() {
+    const tbody = document.querySelector("#gst_table tbody");
+    tbody.innerHTML = "";
+    let total = 0;
+
+    const seller = getStateCode(seller_gstin.value);
+    const buyer = getStateCode(customer_gstin.value);
+
+    document.querySelectorAll(".product-row").forEach(row => {
+        const name = row.children[1].innerText;
+        const price = parseFloat(row.children[2].innerText.replace("₹",""));
+        const qty = parseInt(row.querySelector("input[name='quantity[]']").value);
+        const pid = row.querySelector("input[name='product_id[]']").value;
+        const gstRate = document.querySelector(`#product_select option[value="${pid}"]`).dataset.tax;
+
+        const taxable = price * qty;
+        let cgst=0, sgst=0, igst=0;
+
+        if (seller && buyer && seller === buyer) {
+            cgst = taxable * gstRate / 200;
+            sgst = taxable * gstRate / 200;
+        } else {
+            igst = taxable * gstRate / 100;
+        }
+
+        const lineTotal = taxable + cgst + sgst + igst;
+        total += lineTotal;
+
+        tbody.insertAdjacentHTML("beforeend", `
+            <tr>
+                <td>${name}</td>
+                <td>${qty}</td>
+                <td>₹${taxable.toFixed(2)}</td>
+                <td>₹${cgst.toFixed(2)}</td>
+                <td>₹${sgst.toFixed(2)}</td>
+                <td>₹${igst.toFixed(2)}</td>
+                <td>₹${lineTotal.toFixed(2)}</td>
+            </tr>
+        `);
+    });
+
+    invoice_total.innerText = total.toFixed(2);
+}
+
+customer_gstin.addEventListener("input", recalcGSTPreview);
 </script>
 
-<style>
-    .form-section {
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        margin-bottom: 20px;
-    }
-
-    .form-row {
-        display: flex;
-        gap: 15px;
-        margin-bottom: 15px;
-    }
-
-    .form-row .form-group {
-        flex: 1;
-    }
-
-    #product_items {
-        margin-bottom: 20px;
-    }
-
-    .product-row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 10px;
-        background: #f8f9fa;
-        border-radius: 4px;
-        margin-bottom: 8px;
-    }
-
-    .product-row span {
-        flex: 1;
-    }
-
-    .product-row button {
-        background: #dc3545;
-        color: white;
-        border: none;
-        padding: 5px 10px;
-        border-radius: 4px;
-        cursor: pointer;
-    }
-
-    .btn-secondary {
-        background: #6c757d;
-        color: white;
-        border: none;
-        padding: 8px 15px;
-        border-radius: 4px;
-        cursor: pointer;
-        align-self: flex-end;
-    }
-
-    form div {
-        margin-bottom: 10px;
-    }
-    
-    label {
-        display: inline-block;
-        width: 150px;
-    }
-    
-    input[type="text"], 
-    input[type="number"],
-    select,
-    textarea {
-        width: 300px;
-        padding: 5px;
-    }
-    
-    textarea {
-        height: 60px;
-    }
-    
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 20px;
-    }
-    
-    th, td {
-        padding: 8px;
-        text-align: left;
-        border-bottom: 1px solid #ddd;
-    }
-    
-    th {
-        background-color: #f2f2f2;
-    }
-    
-    tr:hover {
-        background-color: #f5f5f5;
-    }
-</style>
 {% endblock %}
