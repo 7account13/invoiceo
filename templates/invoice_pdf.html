@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+body { font-family: Arial; font-size: 12px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { border: 1px solid #333; padding: 6px; }
+.header { text-align: center; font-size: 18px; font-weight: bold; }
+.right { text-align: right; }
+</style>
+</head>
+<body>
+
+<div class="header">TAX INVOICE</div>
+
+<p>
+<b>Invoice No:</b> {{ invoice.id }}<br>
+<b>Date:</b> {{ invoice.created_at.strftime('%d-%m-%Y') }}
+</p>
+
+<h4>Bill To:</h4>
+<p>
+{{ invoice.customer_name }}<br>
+{{ invoice.billing_address }}<br>
+GSTIN: {{ invoice.customer_gstin }}
+</p>
+
+<table>
+<tr>
+    <th>#</th>
+    <th>Product</th>
+    <th>Qty</th>
+    <th>Rate</th>
+    <th>Taxable</th>
+    <th>CGST</th>
+    <th>SGST</th>
+    <th>IGST</th>
+    <th>Total</th>
+</tr>
+
+{% for item in invoice.items %}
+<tr>
+    <td>{{ loop.index }}</td>
+    <td>{{ item.product_name }}</td>
+    <td>{{ item.quantity }}</td>
+    <td>{{ item.unit_price }}</td>
+    <td>{{ item.taxable_value }}</td>
+    <td>{{ item.cgst }}</td>
+    <td>{{ item.sgst }}</td>
+    <td>{{ item.igst }}</td>
+    <td>{{ item.total }}</td>
+</tr>
+{% endfor %}
+
+<tr>
+    <td colspan="8" class="right"><b>Grand Total</b></td>
+    <td><b>{{ invoice.amount }}</b></td>
+</tr>
+</table>
+
+<br>
+<p>Status: <b>{{ invoice.status }}</b></p>
+
+</body>
+</html>

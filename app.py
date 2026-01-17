@@ -1,6 +1,7 @@
-from flask import Flask,  render_template, request, redirect, url_for, send_file, abort
+from flask import Flask,  render_template, make_response, request, redirect, url_for, send_file, abort
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import extract, func
+from weasyprint import HTML
 
 import os
 from reportlab.lib.pagesizes import letter
@@ -280,6 +281,21 @@ def invoices():
         products=Product.query.all(),
         sales_orders=SalesOrder.query.all()
     )
+
+
+@app.route('/invoice/<int:invoice_id>/pdf')
+def invoice_pdf(invoice_id):
+    invoice = Invoice.query.get_or_404(invoice_id)
+
+    html = render_template('invoice_pdf.html', invoice=invoice)
+
+    pdf = HTML(string=html).write_pdf()
+
+    response = make_response(pdf)
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = f'inline; filename=invoice_{invoice.id}.pdf'
+
+    return response
 
 @app.route('/add_invoice', methods=['POST'])
 def add_invoice():
