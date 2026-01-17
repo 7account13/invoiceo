@@ -1,60 +1,40 @@
 {% extends 'base.html' %}
-
 {% block content %}
 
 <h2>Sales Orders</h2>
 
-<!-- ================= SALES ORDER LIST ================= -->
 {% if orders %}
-<table>
+<table class="so-table">
     <thead>
         <tr>
             <th>SO No</th>
             <th>Customer</th>
-            <th>Customer PO No</th>
+            <th>PO No</th>
             <th>Date</th>
             <th>Status</th>
+            <th>Product</th>
+            <th>Ordered</th>
+            <th>Invoiced</th>
+            <th>Remaining</th>
+            <th>Unit Price</th>
         </tr>
     </thead>
     <tbody>
     {% for so in orders %}
+        {% for item in so.items %}
         <tr>
             <td>{{ so.so_number }}</td>
             <td>{{ so.customer.customer_name }}</td>
             <td>{{ so.customer_po_number }}</td>
             <td>{{ so.order_date.strftime('%d-%m-%Y') }}</td>
-            <td>{{ so.status }}</td>
+            <td class="status {{ so.status|lower|replace(' ', '-') }}">{{ so.status }}</td>
+            <td>{{ item.product_name }}</td>
+            <td>{{ item.ordered_qty }}</td>
+            <td>{{ item.invoiced_qty }}</td>
+            <td>{{ item.ordered_qty - item.invoiced_qty }}</td>
+            <td>₹{{ "%.2f"|format(item.unit_price) }}</td>
         </tr>
-
-        <!-- SO ITEMS -->
-        <tr>
-            <td colspan="5">
-                <table width="100%" style="margin:10px 0;">
-                    <thead>
-                        <tr>
-                            <th>Product</th>
-                            <th>Ordered Qty</th>
-                            <th>Invoiced Qty</th>
-                            <th>Remaining Qty</th>
-                            <th>Unit Price</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    {% for item in so.items %}
-                        <tr>
-                            <td>{{ item.product_name }}</td>
-                            <td>{{ item.ordered_qty }}</td>
-                            <td>{{ item.invoiced_qty }}</td>
-                            <td>
-                                {{ item.ordered_qty - item.invoiced_qty }}
-                            </td>
-                            <td>₹{{ item.unit_price }}</td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </td>
-        </tr>
+        {% endfor %}
     {% endfor %}
     </tbody>
 </table>
@@ -64,7 +44,6 @@
 
 <hr>
 
-<!-- ================= ADD SALES ORDER ================= -->
 <h2>Add Sales Order</h2>
 
 <form method="POST" action="{{ url_for('add_sales_order') }}">
@@ -92,9 +71,7 @@
         <select id="product_select">
             <option value="">-- Select Product --</option>
             {% for p in products %}
-            <option value="{{ p.id }}"
-                    data-name="{{ p.name }}"
-                    data-price="{{ p.price }}">
+            <option value="{{ p.id }}" data-name="{{ p.name }}" data-price="{{ p.price }}">
                 {{ p.name }}
             </option>
             {% endfor %}
@@ -111,35 +88,27 @@
 
 </form>
 
-<!-- ================= JS ================= -->
 <script>
 function addSOItem() {
     const sel = document.getElementById("product_select");
     const opt = sel.selectedOptions[0];
-
     if (!opt.value) return;
 
     const qty = document.getElementById("product_qty").value;
     const price = document.getElementById("product_price").value || opt.dataset.price;
-
     if (!qty || qty <= 0) return;
 
-    document.getElementById("so_items").insertAdjacentHTML(
-        "beforeend",
-        `
+    document.getElementById("so_items").insertAdjacentHTML("beforeend", `
         <div class="so-row">
             <input type="hidden" name="product_id[]" value="${opt.value}">
             <input type="hidden" name="quantity[]" value="${qty}">
             <input type="hidden" name="price[]" value="${price}">
-
             <span>${opt.dataset.name}</span>
             <span>Qty: ${qty}</span>
             <span>₹${price}</span>
-
             <button type="button" onclick="this.parentElement.remove()">Remove</button>
         </div>
-        `
-    );
+    `);
 
     sel.selectedIndex = 0;
     document.getElementById("product_qty").value = "";
@@ -148,6 +117,22 @@ function addSOItem() {
 </script>
 
 <style>
+.so-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.so-table th, .so-table td {
+    border: 1px solid #ccc;
+    padding: 6px;
+    text-align: center;
+}
+
+.status.open { color: orange; }
+.status.completed { color: green; }
+.status.partially-invoiced { color: blue; }
+
 .form-section {
     margin-bottom: 15px;
 }
