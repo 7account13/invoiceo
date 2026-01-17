@@ -7,7 +7,7 @@ It supports GST calculations (CGST / SGST / IGST) and allows backdated invoices 
 Sales orders can be partially invoiced, with remaining quantities tracked automatically.
 Payments update invoice balances and customer receivables in real time.
 A basic dashboard shows monthly sales, orders, payments, and receivables.
-Invoices can be exported as PDFs using ReportLab.
+Invoices can be exported as PDFs using Weasyprint.
 The project is designed to be simple, readable, and easy to extend.
 
 🚀 How to Run
