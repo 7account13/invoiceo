@@ -102,3 +102,21 @@ class SalesOrderItem(db.Model):
     unit_price = db.Column(db.Float, nullable=False)
 
     product = db.relationship('Product')
+
+
+class Expense(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    title = db.Column(db.String(150), nullable=False)
+    category = db.Column(db.String(100), nullable=False)
+
+    amount = db.Column(db.Float, nullable=False)
+
+    payment_mode = db.Column(db.String(50))   # Cash / Bank / UPI / Card
+    reference = db.Column(db.String(100))     # optional txn id / bill no
+
+    expense_date = db.Column(db.DateTime, default=datetime.utcnow)
+
+    notes = db.Column(db.String(300))
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)

@@ -170,6 +170,23 @@ class SalesOrderItem(db.Model):
 
     product = db.relationship('Product')
 
+class Expense(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    title = db.Column(db.String(150), nullable=False)
+    category = db.Column(db.String(100), nullable=False)
+
+    amount = db.Column(db.Float, nullable=False)
+
+    payment_mode = db.Column(db.String(50))   # Cash / Bank / UPI / Card
+    reference = db.Column(db.String(100))     # optional txn id / bill no
+
+    expense_date = db.Column(db.DateTime, default=datetime.utcnow)
+
+    notes = db.Column(db.String(300))
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 
 # ---------------- DB INIT ----------------
 with app.app_context():
@@ -249,16 +266,33 @@ def dashboard():
 
     # ---------------- SALES ORDERS ----------------
     orders_q = db.session.query(
-        extract('month', SalesOrder.created_at),
-        func.sum(SalesOrder.total_value)
+        extract('month', SalesOrder.order_date),
+        func.sum(SalesOrderItem.ordered_qty * SalesOrderItem.unit_price)
+    ).join(
+        SalesOrderItem, SalesOrderItem.sales_order_id == SalesOrder.id
     ).filter(
-        extract('year', SalesOrder.created_at) == current_year
+        extract('year', SalesOrder.order_date) == current_year
     ).group_by(
-        extract('month', SalesOrder.created_at)
+        extract('month', SalesOrder.order_date)
     ).all()
 
     for month, total in orders_q:
         orders[int(month) - 1] = float(total or 0)
+
+
+    # ---------------- EXPENSES ----------------
+    expenses_q = db.session.query(
+        extract('month', Expense.expense_date),
+        func.sum(Expense.amount)
+    ).filter(
+        extract('year', Expense.expense_date) == current_year
+    ).group_by(
+        extract('month', Expense.expense_date)
+    ).all()
+
+    for month, total in expenses_q:
+        expenses[int(month) - 1] = float(total or 0)
+
 
     return render_template(
         "dashboard.html",
@@ -497,6 +531,35 @@ def add_sales_order():
 
     db.session.commit()
     return redirect(url_for('sales_orders'))
+
+
+@app.route('/expenses')
+def expenses():
+    expenses = Expense.query.order_by(Expense.expense_date.desc()).all()
+    return render_template('expenses.html', expenses=expenses)
+
+
+@app.route('/add_expense', methods=['POST'])
+def add_expense():
+    expense = Expense(
+        title=request.form['title'],
+        category=request.form['category'],
+        amount=float(request.form['amount']),
+        payment_mode=request.form.get('payment_mode'),
+        reference=request.form.get('reference'),
+        notes=request.form.get('notes'),
+        expense_date=datetime.strptime(request.form['expense_date'], "%Y-%m-%d")
+    )
+    db.session.add(expense)
+    db.session.commit()
+    return redirect(url_for('expenses'))
+
+@app.route('/delete_expense/<int:id>', methods=['POST'])
+def delete_expense(id):
+    exp = Expense.query.get_or_404(id)
+    db.session.delete(exp)
+    db.session.commit()
+    return redirect(url_for('expenses'))
 
 
 @app.route('/payments')
