@@ -1,76 +1,54 @@
 {% extends "base.html" %}
-
 {% block content %}
 
-<h2 style="margin-bottom: 10px;">
-    Business Overview – {{ year }}
-</h2>
+<link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
 
-<p style="color: #666; margin-bottom: 20px;">
-    Monthly trend of sales, payments, receivables, orders and expenses
+<h2 style="margin-bottom: 8px;">Business Overview – {{ year }}</h2>
+<p style="color:#666; margin-bottom:18px;">
+    Monthly comparison of sales, payments, receivables, sales orders and expenses
 </p>
 
-<div style="
-    background: #fff;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-">
-    <canvas id="trendChart" height="120"></canvas>
+<div class="chart-card">
+    <div class="chart-container">
+        <canvas id="trendChart"></canvas>
+    </div>
 </div>
 
-<!-- Chart.js -->
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
 const ctx = document.getElementById('trendChart').getContext('2d');
 
 new Chart(ctx, {
-    type: 'line',
+    type: 'bar',
     data: {
         labels: {{ months | tojson }},
         datasets: [
             {
                 label: 'Sales',
                 data: {{ sales | tojson }},
-                borderColor: '#007bff',
-                backgroundColor: 'transparent',
-                tension: 0.3,
-                borderWidth: 2
+                backgroundColor: '#007bff'
             },
             {
-                label: 'Payments Received',
+                label: 'Payments',
                 data: {{ payments | tojson }},
-                borderColor: '#28a745',
-                backgroundColor: 'transparent',
-                tension: 0.3,
-                borderWidth: 2
+                backgroundColor: '#28a745'
             },
             {
                 label: 'Receivables',
                 data: {{ receivables | tojson }},
-                borderColor: '#dc3545',
-                backgroundColor: 'transparent',
-                borderDash: [6, 4],
-                tension: 0.3,
-                borderWidth: 2
+                backgroundColor: '#dc3545'
             },
             {
                 label: 'Sales Orders',
                 data: {{ orders | tojson }},
-                borderColor: '#6f42c1',
-                backgroundColor: 'transparent',
-                tension: 0.3,
-                borderWidth: 2
+                backgroundColor: '#6f42c1'
             },
             {
                 label: 'Expenses',
                 data: {{ expenses | tojson }},
-                borderColor: '#6c757d',
-                backgroundColor: 'transparent',
-                borderDash: [3, 3],
-                tension: 0.3,
-                borderWidth: 2
+                backgroundColor: '#6c757d'
             }
         ]
     },
@@ -79,16 +57,12 @@ new Chart(ctx, {
         maintainAspectRatio: false,
         plugins: {
             legend: {
-                position: 'bottom',
-                labels: {
-                    boxWidth: 12,
-                    padding: 15
-                }
+                position: 'bottom'
             },
             tooltip: {
                 callbacks: {
-                    label: function(ctx) {
-                        return ctx.dataset.label + ': ₹' + ctx.raw.toLocaleString();
+                    label: function(context) {
+                        return context.dataset.label + ': ₹' + context.raw.toLocaleString('en-IN');
                     }
                 }
             }
@@ -98,16 +72,8 @@ new Chart(ctx, {
                 beginAtZero: true,
                 ticks: {
                     callback: function(value) {
-                        return '₹' + value.toLocaleString();
+                        return '₹' + value.toLocaleString('en-IN');
                     }
-                },
-                grid: {
-                    color: '#eee'
-                }
-            },
-            x: {
-                grid: {
-                    display: false
                 }
             }
         }
