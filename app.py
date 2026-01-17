@@ -312,16 +312,23 @@ def add_invoice():
 
 
     # ---------------- CUSTOMER ----------------
+    customer = None
     customer_id = request.form.get('customer_id')
+    sales_order_id = request.form.get('sales_order_id')
 
-    if customer_id:
+    if sales_order_id:
+        so = SalesOrder.query.get_or_404(sales_order_id)
+        customer = so.customer
+
+    elif customer_id:
         customer = Customer.query.get_or_404(customer_id)
+
+    if customer:
         customer_name = customer.customer_name
         customer_gstin = customer.customer_gstin
         customer_address = customer.customer_address
         billing_address = customer.billing_address
     else:
-        customer = None
         customer_name = request.form['customer_name']
         customer_gstin = request.form['customer_gstin']
         customer_address = request.form['customer_address']
