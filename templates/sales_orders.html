@@ -2,7 +2,15 @@
 {% block content %}
 
 <h2>Sales Orders</h2>
+<label for="statusFilter"><b>Filter by Status:</b></label>
+<select id="statusFilter" onchange="filterStatus()">
+    <option value="all">All</option>
+    <option value="open">Fresh</option>
+    <option value="partially-invoiced">Partially Invoiced</option>
+    <option value="completed">Fulfilled</option>
+</select>
 
+<br><br>
 {% if orders %}
 <table class="so-table">
     <thead>
@@ -114,7 +122,26 @@ function addSOItem() {
     document.getElementById("product_qty").value = "";
     document.getElementById("product_price").value = "";
 }
+
+function filterStatus() {
+    const filter = document.getElementById("statusFilter").value;
+    const rows = document.querySelectorAll(".so-table tbody tr");
+
+    rows.forEach(row => {
+        const statusCell = row.querySelector(".status");
+        if (!statusCell) return;
+
+        const statusClass = statusCell.classList[1]; // open / completed / partially-invoiced
+
+        if (filter === "all" || statusClass === filter) {
+            row.style.display = "";
+        } else {
+            row.style.display = "none";
+        }
+    });
+}
 </script>
+
 
 <style>
 .so-table {
